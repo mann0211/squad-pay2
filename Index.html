@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>中部小隊找數神器 4.0</title>
+    <style>
+        body { font-family: -apple-system, system-ui, sans-serif; padding: 15px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h2 { text-align: center; color: #4a90e2; margin-bottom: 15px; }
+        .input-group { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .row { display: flex; gap: 8px; align-items: center; }
+        .label { font-size: 14px; font-weight: bold; min-width: 70px; color: #666; }
+        input, select { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        
+        .btn-main-group { display: flex; gap: 10px; margin-top: 10px; }
+        button.add-btn { flex: 1; background-color: #4a90e2; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        button.split-btn { flex: 1; background-color: #34c759; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border-bottom: 1px solid #f0f0f0; padding: 12px 5px; text-align: left; }
+        .del-btn { background: #ff5e5e; color: white; border: none; padding: 6px 10px; border-radius: 6px; }
+        
+        .summary { margin-top: 25px; padding: 15px; background: #f8f9ff; border-radius: 12px; border: 1px dashed #4a90e2; }
+        .summary h3 { margin: 0 0 10px 0; font-size: 16px; color: #4a90e2; }
+        .result-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .plus { color: #28a745; font-weight: bold; }
+        .minus { color: #dc3545; font-weight: bold; }
+        
+        .footer-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        button.copy-btn { background: #007aff; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; }
+        button.clear-all-btn { background: #dc3545; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🏔️ 中部小隊找數神器 4.0</h2>
+    
+    <div class="input-group">
+        <input type="text" id="itemName" placeholder="物品名稱">
+        <div class="row">
+            <input type="number" id="itemPrice" placeholder="金額" step="0.01">
+            <input type="number" id="itemQty" value="1" placeholder="數量">
+        </div>
+        <div class="row">
+            <span class="label">邊個俾錢：</span>
+            <select id="payer">
+                <option value="Emmy">Emmy</option>
+                <option value="Tracy">Tracy</option>
+                <option value="Crystal">Crystal</option>
+            </select>
+        </div>
+        <div class="row">
+            <span class="label">幫邊個買：</span>
+            <select id="receiver">
+                <option value="Emmy">Emmy</option>
+                <option value="Tracy">Tracy</option>
+                <option value="Crystal">Crystal</option>
+                <option value="Everyone">🌟 全體平分</option>
+            </select>
+        </div>
+        
+        <div class="btn-main-group">
+            <button class="add-btn" onclick="addItem(false)">個人入數</button>
+            <button class="split-btn" onclick="addItem(true)">🌟 全體平分</button>
+        </div>
+    </div>
+
+    <table id="listTable">
+        <thead>
+            <tr>
+                <th>物品</th>
+                <th>金額</th>
+                <th>俾錢 ➔ 對象</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="itemBody"></tbody>
+    </table>
+
+    <div class="summary">
+        <h3>💰 最終結算：</h3>
+        <div id="summaryContent">仲未有數據</div>
+        <div class="footer-btns" id="footerButtons" style="display:none;">
+            <button class="copy-btn" onclick="copyToClipboard()">📋 複製報數文字</button>
+            <button class="clear-all-btn" onclick="clearAll()">✅ 找清並清除所有紀錄</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let items = [];
+    const names = ["Emmy", "Tracy", "Crystal"];
+
+    window.onload = function() {
+        const saved = localStorage.getItem('squadDataV4');
+        if (saved) {
+            items = JSON.parse(saved);
+            render();
+        }
+    };
+
+    function addItem(isSplit) {
+        const nameInput = document.getElementById('itemName');
+        const priceInput = document.getElementById('itemPrice');
+        const qtyInput = document.getElementById('itemQty');
+        const payer = document.getElementById('payer').value;
+        const receiver = isSplit ? "Everyone" : document.getElementById('receiver').value;
+
+        const name = nameInput.value || "未命名物品";
+        const price = parseFloat(priceInput.value);
+        const qty = parseInt(qtyInput.value);
+
+        if (isNaN(price)) { return alert("請輸入正確價錢先！"); }
+
+        items.push({ id: Date.now(), name, price, qty, payer, receiver });
+        
+        nameInput.value = '';
+        priceInput.value = '';
+        qtyInput.value = 1;
+        saveAndRender();
+    }
+
+    function deleteItem(id) {
+        if(confirm("確定刪除呢一項？")) {
+            items = items.filter(i => i.id !== id);
+            saveAndRender();
+        }
+    }
+
+    function clearAll() {
+        if(confirm("係咪確定已經搵晒數，要清空所有紀錄？\n(清空咗就救唔返㗎喇！)")) {
+            items = [];
+            saveAndRender();
+            alert("已清空！又可以再買過喇 🛍️");
+        }
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('squadDataV4', JSON.stringify(items));
+        render();
+    }
+
+    function render() {
+        const body = document.getElementById('itemBody');
+        body.innerHTML = '';
+        let balances = { "Emmy": 0, "Tracy": 0, "Crystal": 0 };
+
+        items.forEach(item => {
+            const totalAmount = item.price * item.qty;
+            if (item.receiver === "Everyone") {
+                const share = totalAmount / 3;
+                balances[item.payer] += totalAmount;
+                names.forEach(n => balances[n] -= share);
+            } else {
+                balances[item.payer] += totalAmount;
+                balances[item.receiver] -= totalAmount;
+            }
+
+            body.innerHTML += `<tr>
+                <td>${item.name}</td>
+                <td>$${totalAmount.toFixed(2)}</td>
+                <td style="font-size:10px;">${item.payer} ➔ ${item.receiver === 'Everyone' ? '大家' : item.receiver}</td>
+                <td><button class="del-btn" onclick="deleteItem(${item.id})">✕</button></td>
+            </tr>`;
+        });
+
+        const summary = document.getElementById('summaryContent');
+        const footerBtns = document.getElementById('footerButtons');
+        
+        if (items.length === 0) {
+            summary.innerHTML = '仲未有數據';
+            footerBtns.style.display = 'none';
+            return;
+        }
+
+        footerBtns.style.display = 'flex';
+        let html = '';
+        names.forEach(n => {
+            const b = balances[n];
+            const statusClass = b >= 0 ? 'plus' : 'minus';
+            const statusText = b >= 0 ? '收返' : '俾返';
+            html += `<div class="result-row">
+                <span>${n}</span>
+                <span class="${statusClass}">${statusText} $${Math.abs(b).toFixed(2)}</span>
+            </div>`;
+        });
+        summary.innerHTML = html;
+    }
+
+    function copyToClipboard() {
+        let balances = { "Emmy": 0, "Tracy": 0, "Crystal": 0 };
+        items.forEach(item => {
+            const totalAmount = item.price * item.qty;
+            if (item.receiver === "Everyone") {
+                const share = totalAmount / 3;
+                balances[item.payer] += totalAmount;
+                names.forEach(n => balances[n] -= share);
+            } else {
+                balances[item.payer] += totalAmount;
+                balances[item.receiver] -= totalAmount;
+            }
+        });
+
+        let text = "🏔️【中部小隊 4.0 找數清單】\n\n";
+        names.forEach(n => {
+            const b = balances[n];
+            if(Math.abs(b) > 0.01) {
+                text += `${n}: ${b >= 0 ? '收返' : '俾返'} $${Math.abs(b).toFixed(2)}\n`;
+            }
+        });
+        text += "\n唔該晒大家！找咗數記得清機呀 🙏";
+        navigator.clipboard.writeText(text).then(() => alert("已複製！貼去 WhatsApp Group 俾大家睇啦。"));
+    }
+</script>
+
+</body>
+</html>
